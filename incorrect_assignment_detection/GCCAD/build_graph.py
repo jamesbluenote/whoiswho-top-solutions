@@ -206,6 +206,7 @@ def getdata(orcid):
 
     return (data,edge_label,orcid,all_pappers_id)
 
+'''
 def build_dataset(path):
     
     keys_list = list(author_names.keys())
@@ -216,7 +217,21 @@ def build_dataset(path):
     with open(path, "wb") as f:
         pk.dump(results, f)
     print('finish')
+'''
+
+def build_dataset(path):
+    keys_list = list(author_names.keys())
     
+    ctx = mp.get_context('spawn')  # Use 'spawn' method to avoid issues with 'fork'
+    with ctx.Pool(processes=10) as pool:
+        results = pool.map(getdata, keys_list)
+    
+    with open(path, "wb") as f:
+        pk.dump(results, f)
+    
+    print('finish')
+
+
 def norm(data):
     """
     normalize venue, name and org, for build cleaned graph
@@ -286,11 +301,21 @@ if __name__ == "__main__":
         papers_info = js.load(f)
 
     # clean pub, if needed
+    '''
     with mp.Pool(processes=10) as pool:
         results = pool.map(norm,[value for _,value  in papers_info.items()])
     papers_info = {k:v for k,v in zip(papers_info.keys(),results)}
     print('done clean pubs')
+    '''
     
+    ctx = mp.get_context('spawn')  # Use 'spawn' method to avoid issues with 'fork'
+    with ctx.Pool(processes=10) as pool:
+        results = pool.map(norm, [value for _, value in papers_info.items()])
+    
+    papers_info = {k: v for k, v in zip(papers_info.keys(), results)}    
+    print('done clean pubs')
+
+
     with open(args.embeddings_dir, "rb") as f:
         dic_paper_embedding = pk.load(f)
     print('done loading embeddings')
